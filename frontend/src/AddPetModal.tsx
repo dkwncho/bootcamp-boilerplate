@@ -11,10 +11,10 @@ export interface AddPetValues {
 interface AddPetModalProps {
   open: boolean;
   onClose: () => void;
-  //   onSubmit: (values: AddPetValues) => void;
+  onSubmit: (values: AddPetValues) => void;
 }
 
-export default function AddPetModal({ open, onClose }: AddPetModalProps) {
+export default function AddPetModal({ open, onClose, onSubmit }: AddPetModalProps) {
   const [values, setValues] = React.useState<AddPetValues>({
     name: "",
     breed: "",
@@ -31,7 +31,7 @@ export default function AddPetModal({ open, onClose }: AddPetModalProps) {
   };
 
   const handleSubmit = () => {
-    // onSubmit(values);
+    onSubmit(values);
     onClose();
     // optional: reset after close
     setValues({ name: "", breed: "", age: undefined, url: "" });

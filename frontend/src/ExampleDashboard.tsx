@@ -11,10 +11,11 @@ import CardMedia from "@mui/material/CardMedia";
 import Typography from "@mui/material/Typography";
 import Dialog from "@mui/material/Dialog";
 import TextField from "@mui/material/TextField";
-import AddPetModal from "./AddPetModal";
+import AddPetModal, { type AddPetValues } from "./AddPetModal";
 import IconButton from "@mui/material/IconButton";
 import SearchIcon from "@mui/icons-material/Search";
 import InputAdornment from "@mui/material/InputAdornment";
+import { createPet } from "./ExampleApi";
 
 function Header({ searchQuery, setSearchQuery }: { searchQuery: string; setSearchQuery: (q: string) => void }) {
   return (
@@ -48,12 +49,30 @@ function ExampleDashboard() {
   const [selectedPet, setSelectedPet] = useState<any>(null);
   const [isAddPetOpen, setIsAddPetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-
-  const [petList, setPetList] = useState<any[]>(pets);
+  const [petsList, setPetsList] = useState<any[]>(pets);
   const [explodingIds, setExplodingIds] = useState<Set<string>>(new Set());
 
   const handleAddPetClick = () => setIsAddPetOpen(true);
   const handleClose = () => setIsAddPetOpen(false);
+
+  const handleAddPetSubmit = async (values: AddPetValues) => {
+    try {
+      const response = await createPet(values);
+      if (response.status === 200) {
+        // Add the new pet to the local state immediately
+        const newPet = {
+          _id: response.data.insertedId,
+          name: values.name,
+          breed: values.breed,
+          age: values.age,
+          url: values.url
+        };
+        setPetsList(prevPets => [...prevPets, newPet]);
+      }
+    } catch (error) {
+      console.error("Failed to create pet:", error);
+    }
+  };
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
@@ -73,7 +92,7 @@ function ExampleDashboard() {
 
     const ANIM_MS = 1100;
     setTimeout(() => {
-      setPetList((prev) => prev.filter((p) => p._id !== petId));
+      setPetsList((prev) => prev.filter((p) => p._id !== petId));
       setExplodingIds((prev) => {
         const s = new Set(prev);
         s.delete(petId);
@@ -82,7 +101,7 @@ function ExampleDashboard() {
     }, ANIM_MS);
   };
 
-  const filteredPets = petList.filter((pet: any) => pet.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredPets = petsList.filter((pet: any) => pet.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const petCards = filteredPets.map((pet: any) => {
     const isExploding = explodingIds.has(pet._id);
@@ -148,7 +167,7 @@ function ExampleDashboard() {
             Add Pet
           </Button>
           <div className="pet-grid">{petCards}</div>
-          <AddPetModal open={isAddPetOpen} onClose={handleClose} />
+          <AddPetModal open={isAddPetOpen} onClose={handleClose} onSubmit={handleAddPetSubmit} />
         </Box>
         <Dialog open={isDialogOpen} onClose={handleCloseDialog}>
           <Card sx={{ p: 2 }}>
