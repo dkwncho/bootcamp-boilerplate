@@ -22,15 +22,21 @@ body {
 }
 
 @media (min-width: 600px) {
-  .pet-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pet-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 900px) {
-  .pet-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pet-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 1200px) {
-  .pet-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .pet-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 .pet-card {
@@ -40,10 +46,11 @@ body {
 
 .pet-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(0,0,0,0.08);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
 }
 
-.pets-container { /* legacy hook; keep spacing consistent if used */
+.pets-container {
+  /* legacy hook; keep spacing consistent if used */
   margin-top: 12px;
 }
 
@@ -67,3 +74,211 @@ body {
   padding-bottom: 64px;
 }
 
+/* Explosion animation styles */
+.pet-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.explode-card {
+  animation: explodeCard 700ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes explodeCard {
+  0% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(0.85) rotate(8deg);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(0.2) rotate(20deg);
+    opacity: 0;
+  }
+}
+
+.bomb-explosion {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.bomb-explosion .boom {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 30%, #fff59d 0%, #ffeb3b 20%, #ff9800 45%, #ff5722 60%, rgba(0, 0, 0, 0) 61%);
+  filter: blur(6px);
+  animation: boom 700ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  box-shadow: 0 0 20px rgba(255, 140, 0, 0.7), 0 0 40px rgba(255, 183, 77, 0.45);
+}
+
+@keyframes boom {
+  0% {
+    transform: scale(0.2);
+    opacity: 1;
+    filter: blur(4px);
+  }
+  60% {
+    transform: scale(2.6);
+    opacity: 0.9;
+    filter: blur(8px);
+  }
+  100% {
+    transform: scale(4.2);
+    opacity: 0;
+    filter: blur(16px);
+  }
+}
+
+.bomb-explosion::before,
+.bomb-explosion::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffb74d, #ff6f00);
+  opacity: 0;
+  animation: ember 700ms forwards;
+}
+
+.bomb-explosion::before {
+  left: 20%;
+  top: 30%;
+  animation-delay: 60ms;
+}
+
+.bomb-explosion::after {
+  right: 18%;
+  top: 50%;
+  animation-delay: 120ms;
+}
+
+@keyframes ember {
+  0% {
+    transform: translateY(0) scale(0.6);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-40px) translateX(20px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+/* More impactful explosion additions */
+.explode-card {
+  /* stronger shake and faster pop */
+  animation: explodeCard 900ms cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
+}
+
+.pet-card.explode-card {
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
+}
+
+.bomb-explosion .flash {
+  position: absolute;
+  width: 120%;
+  height: 120%;
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 230, 160, 0.6) 30%,
+    rgba(255, 120, 20, 0) 60%
+  );
+  opacity: 0;
+  transform: scale(0.6);
+  border-radius: 50%;
+  filter: blur(8px);
+  animation: flashAnim 220ms ease-out forwards;
+}
+
+@keyframes flashAnim {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+.bomb-explosion .shards {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.bomb-explosion .shard {
+  --i: 0;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  background: linear-gradient(135deg, #ffd54f, #ff6d00);
+  border-radius: 2px;
+  transform-origin: center;
+  opacity: 0;
+  filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.25));
+  animation: shardAnim 900ms cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
+  transform: translate(-50%, -50%) rotate(calc(var(--i) * 30deg));
+}
+
+@keyframes shardAnim {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.6) rotate(var(--rot, 0deg));
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(1.1)
+      rotate(calc(var(--rot, 0deg) + 180deg));
+  }
+}
+
+/* Distribute shards using inline style --i to calculate movement in JS via CSS variables */
+.bomb-explosion .shard:nth-child(1) {
+  --dx: -120px;
+  --dy: -60px;
+  --rot: -20deg;
+}
+.bomb-explosion .shard:nth-child(2) {
+  --dx: -60px;
+  --dy: -140px;
+  --rot: -70deg;
+}
+.bomb-explosion .shard:nth-child(3) {
+  --dx: 40px;
+  --dy: -120px;
+  --rot: 15deg;
+}
+.bomb-explosion .shard:nth-child(4) {
+  --dx: 120px;
+  --dy: -20px;
+  --rot: 55deg;
+}
+.bomb-explosion .shard:nth-child(5) {
+  --dx: 100px;
+  --dy: 80px;
+  --rot: 95deg;
+}
+.bomb-explosion .shard:nth-child(6) {
+  --dx: -80px;
+  --dy: 80px;
+  --rot: -110deg;
+}

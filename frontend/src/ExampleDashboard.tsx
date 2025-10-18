@@ -49,6 +49,9 @@ function ExampleDashboard() {
   const [isAddPetOpen, setIsAddPetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [petList, setPetList] = useState<any[]>(pets);
+  const [explodingIds, setExplodingIds] = useState<Set<string>>(new Set());
+
   const handleAddPetClick = () => setIsAddPetOpen(true);
   const handleClose = () => setIsAddPetOpen(false);
 
@@ -61,12 +64,31 @@ function ExampleDashboard() {
     handleCloseDialog();
   };
 
-  const filteredPets = pets.filter((pet: any) => pet.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const handleDelete = (petId: string) => {
+    setExplodingIds((prev) => {
+      const s = new Set(prev);
+      s.add(petId);
+      return s;
+    });
+
+    const ANIM_MS = 1100;
+    setTimeout(() => {
+      setPetList((prev) => prev.filter((p) => p._id !== petId));
+      setExplodingIds((prev) => {
+        const s = new Set(prev);
+        s.delete(petId);
+        return s;
+      });
+    }, ANIM_MS);
+  };
+
+  const filteredPets = petList.filter((pet: any) => pet.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const petCards = filteredPets.map((pet: any) => {
+    const isExploding = explodingIds.has(pet._id);
     return (
       <div key={pet._id} className="pet-grid-item">
-        <Card className="pet-card" sx={{ height: "100%", position: "relative" }}>
+        <Card className={`pet-card ${isExploding ? "explode-card" : ""}`} sx={{ height: "100%", position: "relative" }}>
           {pet.url ? (
             <CardMedia sx={{ height: 220 }} image={pet.url} />
           ) : (
@@ -97,10 +119,21 @@ function ExampleDashboard() {
             >
               Modify
             </Button>
-            <Button size="small" color="error">
+            <Button size="small" color="error" onClick={() => handleDelete(pet._id)}>
               Delete
             </Button>
           </CardActions>
+          {isExploding && (
+            <div className="bomb-explosion" aria-hidden>
+              <div className="flash" />
+              <div className="boom" />
+              <div className="shards">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <span key={i} style={{ ["--i" as any]: i } as React.CSSProperties} className="shard" />
+                ))}
+              </div>
+            </div>
+          )}
         </Card>
       </div>
     );
