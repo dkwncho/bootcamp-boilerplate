@@ -51,6 +51,13 @@ function ExampleDashboard() {
 
   const handleAddPetClick = () => setIsAddPetOpen(true);
   const handleClose = () => setIsAddPetOpen(false);
+  
+  const handleAddPetSubmit = (values: any) => {
+    // Handle adding new pet to the list
+    console.log("Adding new pet:", values);
+    // You can add the pet to your pets array here
+    handleClose();
+  };
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
@@ -121,7 +128,7 @@ function ExampleDashboard() {
             Add Pet
           </Button>
           <div className="pet-grid">{petCards}</div>
-          <AddPetModal open={isAddPetOpen} onClose={handleClose} />
+          <AddPetModal open={isAddPetOpen} onClose={handleClose} onSubmit={handleAddPetSubmit} />
         </Box>
         <Dialog open={isDialogOpen} onClose={handleCloseDialog}>
           <Card sx={{ p: 2 }}>
