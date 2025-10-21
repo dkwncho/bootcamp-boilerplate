@@ -51,6 +51,12 @@ export default function AddPetModal({ open, onClose, onSubmit }: AddPetModalProp
             onChange={handleChange("age")}
             inputProps={{ min: 0 }}
           />
+          <TextField
+            label="Image URL"
+            value={values.url}
+            onChange={handleChange("url")}
+            placeholder="https://example.com/pet-image.jpg"
+          />
         </Stack>
       </DialogContent>
       <DialogActions>
