@@ -15,7 +15,7 @@ import AddPetModal, { type AddPetValues } from "./AddPetModal";
 import IconButton from "@mui/material/IconButton";
 import SearchIcon from "@mui/icons-material/Search";
 import InputAdornment from "@mui/material/InputAdornment";
-import { createPet } from "./ExampleApi";
+import { createPet, updatePet } from "./ExampleApi";
 
 function Header({ searchQuery, setSearchQuery }: { searchQuery: string; setSearchQuery: (q: string) => void }) {
   return (
@@ -51,6 +51,14 @@ function ExampleDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [petsList, setPetsList] = useState<any[]>(pets);
   const [explodingIds, setExplodingIds] = useState<Set<string>>(new Set());
+  
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    name: "",
+    breed: "",
+    age: "",
+    url: ""
+  });
 
   const handleAddPetClick = () => setIsAddPetOpen(true);
   const handleClose = () => setIsAddPetOpen(false);
@@ -76,11 +84,46 @@ function ExampleDashboard() {
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
+    setSelectedPet(null);
+    setEditForm({ name: "", breed: "", age: "", url: "" });
   };
 
-  const saveEdits = () => {
-    // Send PATCH request to backend to save edits
-    handleCloseDialog();
+  const handleEditSubmit = async () => {
+    if (!selectedPet) return;
+    
+    // Extract the actual ID string from the _id object
+    const petId = selectedPet._id.$oid || selectedPet._id;
+    console.log("Extracted pet ID:", petId);
+    
+    try {
+      const response = await updatePet(petId, {
+        name: editForm.name,
+        breed: editForm.breed,
+        age: editForm.age ? Number(editForm.age) : undefined,
+        url: editForm.url
+      });
+      
+      if (response.status === 200) {
+        // Update the pet in local state
+        setPetsList(prevPets => 
+          prevPets.map(pet => 
+            pet._id === selectedPet._id 
+              ? { ...pet, ...editForm, age: editForm.age ? Number(editForm.age) : undefined }
+              : pet
+          )
+        );
+        handleCloseDialog();
+      }
+    } catch (error) {
+      console.error("Failed to update pet:", error);
+    }
+  };
+
+  const handleEditFormChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditForm(prev => ({
+      ...prev,
+      [field]: e.target.value
+    }));
   };
 
   const handleDelete = (petId: string) => {
@@ -131,8 +174,14 @@ function ExampleDashboard() {
           <CardActions>
             <Button
               onClick={() => {
-                setIsDialogOpen(true);
                 setSelectedPet(pet);
+                setEditForm({
+                  name: pet.name || "",
+                  breed: pet.breed || "",
+                  age: pet.age ? pet.age.toString() : "",
+                  url: pet.url || ""
+                });
+                setIsDialogOpen(true);
               }}
               size="small"
             >
@@ -175,14 +224,39 @@ function ExampleDashboard() {
               <Typography variant="h5" gutterBottom>
                 Edit Pet
               </Typography>
-              <TextField margin="normal" fullWidth label="Pet Name" defaultValue={selectedPet?.name || ""} />
-              <TextField margin="normal" fullWidth label="Breed" defaultValue={selectedPet?.breed || ""} />
-              <TextField margin="normal" fullWidth label="Age" defaultValue={selectedPet?.age || ""} />
-              <TextField margin="normal" fullWidth label="Picture URL" defaultValue={selectedPet?.url || ""} />
+              <TextField 
+                margin="normal" 
+                fullWidth 
+                label="Pet Name" 
+                value={editForm.name}
+                onChange={handleEditFormChange("name")}
+              />
+              <TextField 
+                margin="normal" 
+                fullWidth 
+                label="Breed" 
+                value={editForm.breed}
+                onChange={handleEditFormChange("breed")}
+              />
+              <TextField 
+                margin="normal" 
+                fullWidth 
+                label="Age" 
+                value={editForm.age}
+                onChange={handleEditFormChange("age")}
+                type="number"
+              />
+              <TextField 
+                margin="normal" 
+                fullWidth 
+                label="Picture URL" 
+                value={editForm.url}
+                onChange={handleEditFormChange("url")}
+              />
             </CardContent>
             <CardActions sx={{ justifyContent: "flex-end", p: 2 }}>
               <Button onClick={handleCloseDialog}>Cancel</Button>
-              <Button variant="contained" color="primary" onClick={saveEdits}>
+              <Button variant="contained" color="primary" onClick={handleEditSubmit}>
                 Save
               </Button>
             </CardActions>
