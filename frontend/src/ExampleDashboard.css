@@ -1,18 +1,12 @@
-:root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: left;
-}
-
+/* Layout is handled by MUI Container/Theme. Keep background and global body styles */
 body {
   background: linear-gradient(180deg, #fafafa, #f1f5f9);
   min-height: 100vh;
 }
 
 .dashboard {
-  padding-top: 16px;
-  padding-bottom: 16px;
+  padding-top: 24px; /* space under AppBar */
+  padding-bottom: 96px; /* give room for FAB */
 }
 
 .pet-grid {

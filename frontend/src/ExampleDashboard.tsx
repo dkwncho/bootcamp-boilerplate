@@ -15,31 +15,51 @@ import IconButton from "@mui/material/IconButton";
 import SearchIcon from "@mui/icons-material/Search";
 import InputAdornment from "@mui/material/InputAdornment";
 import { createPet, updatePet, getPets, deletePet } from "./ExampleApi";
+import AppBar from "@mui/material/AppBar";
+import Toolbar from "@mui/material/Toolbar";
+import Fab from "@mui/material/Fab";
+import AddIcon from "@mui/icons-material/Add";
+import Snackbar from "@mui/material/Snackbar";
+import MuiAlert from "@mui/material/Alert";
+import type { AlertProps } from "@mui/material/Alert";
+
+const Alert = (props: AlertProps) => {
+  return <MuiAlert elevation={6} variant="filled" {...props} />;
+};
 
 function Header({ searchQuery, setSearchQuery }: { searchQuery: string; setSearchQuery: (q: string) => void }) {
   return (
-    <Box>
-      <Typography variant="h3" align="center" fontWeight="bold" gutterBottom>
-        Pawgrammers Admin Dashboard
-      </Typography>
-      <TextField
-        fullWidth
-        id="search-pet"
-        label="Search for Pet"
-        variant="outlined"
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        inputProps={{
-          endAdornment: (
-            <InputAdornment position="end">
-              <IconButton>
-                <SearchIcon />
-              </IconButton>
-            </InputAdornment>
-          ),
-        }}
-      />
-    </Box>
+    <AppBar position="static" color="transparent" elevation={0} sx={{ mb: 2 }}>
+      <Toolbar sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, alignItems: "flex-start", gap: 2 }}>
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="h5" fontWeight={700} component="div">
+            Pawgrammers
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Admin dashboard
+          </Typography>
+        </Box>
+        <Box sx={{ width: { xs: "100%", sm: 360 } }}>
+          <TextField
+            fullWidth
+            id="search-pet"
+            label="Search pets"
+            variant="outlined"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton aria-label="search">
+                    <SearchIcon />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+        </Box>
+      </Toolbar>
+    </AppBar>
   );
 }
 
@@ -242,57 +262,66 @@ function ExampleDashboard() {
       <Container maxWidth="lg">
         <Box className="dashboard" sx={{ py: 4 }}>
           <Header searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
-          <Button variant="contained" sx={{ mb: 2 }} onClick={handleAddPetClick}>
-            Add Pet
-          </Button>
+
           <div className="pet-grid">{petCards}</div>
+
           <AddPetModal open={isAddPetOpen} onClose={handleClose} onSubmit={handleAddPetSubmit} />
+
+          <Fab color="primary" aria-label="add" onClick={handleAddPetClick} sx={{ position: "fixed", right: 24, bottom: 24 }}>
+            <AddIcon />
+          </Fab>
+
+          <Dialog open={isDialogOpen} onClose={handleCloseDialog}>
+            <Card sx={{ p: 2 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Edit Pet
+                </Typography>
+                <TextField
+                  margin="normal"
+                  fullWidth
+                  label="Pet Name"
+                  value={editForm.name}
+                  onChange={handleEditFormChange("name")}
+                />
+                <TextField
+                  margin="normal"
+                  fullWidth
+                  label="Breed"
+                  value={editForm.breed}
+                  onChange={handleEditFormChange("breed")}
+                />
+                <TextField
+                  margin="normal"
+                  fullWidth
+                  label="Age"
+                  value={editForm.age}
+                  onChange={handleEditFormChange("age")}
+                  type="number"
+                />
+                <TextField
+                  margin="normal"
+                  fullWidth
+                  label="Picture URL"
+                  value={editForm.url}
+                  onChange={handleEditFormChange("url")}
+                />
+              </CardContent>
+              <CardActions sx={{ justifyContent: "flex-end", p: 2 }}>
+                <Button onClick={handleCloseDialog}>Cancel</Button>
+                <Button variant="contained" color="primary" onClick={handleEditSubmit}>
+                  Save
+                </Button>
+              </CardActions>
+            </Card>
+          </Dialog>
         </Box>
-        <Dialog open={isDialogOpen} onClose={handleCloseDialog}>
-          <Card sx={{ p: 2 }}>
-            <CardContent>
-              <Typography variant="h5" gutterBottom>
-                Edit Pet
-              </Typography>
-              <TextField
-                margin="normal"
-                fullWidth
-                label="Pet Name"
-                value={editForm.name}
-                onChange={handleEditFormChange("name")}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label="Breed"
-                value={editForm.breed}
-                onChange={handleEditFormChange("breed")}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label="Age"
-                value={editForm.age}
-                onChange={handleEditFormChange("age")}
-                type="number"
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label="Picture URL"
-                value={editForm.url}
-                onChange={handleEditFormChange("url")}
-              />
-            </CardContent>
-            <CardActions sx={{ justifyContent: "flex-end", p: 2 }}>
-              <Button onClick={handleCloseDialog}>Cancel</Button>
-              <Button variant="contained" color="primary" onClick={handleEditSubmit}>
-                Save
-              </Button>
-            </CardActions>
-          </Card>
-        </Dialog>
       </Container>
+
+      {/* Snackbar for notifications */}
+      <Snackbar open={false} /* TODO: wire success state when needed */ onClose={() => {}} autoHideDuration={3000}>
+        <Alert severity="success">Saved</Alert>
+      </Snackbar>
     </>
   );
 }
