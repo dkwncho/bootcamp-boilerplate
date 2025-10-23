@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import "./ExampleDashboard.css";
 import Container from "@mui/material/Container";
 import Box from "@mui/material/Box";
@@ -21,13 +21,30 @@ import Fab from "@mui/material/Fab";
 import AddIcon from "@mui/icons-material/Add";
 import Snackbar from "@mui/material/Snackbar";
 import MuiAlert from "@mui/material/Alert";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
 import type { AlertProps } from "@mui/material/Alert";
 
 const Alert = (props: AlertProps) => {
   return <MuiAlert elevation={6} variant="filled" {...props} />;
 };
 
-function Header({ searchQuery, setSearchQuery }: { searchQuery: string; setSearchQuery: (q: string) => void }) {
+type ExampleDashboardProps = {
+  themeMode?: "light" | "dark";
+  setThemeMode?: (m: "light" | "dark") => void;
+};
+
+function Header({
+  searchQuery,
+  setSearchQuery,
+  themeMode,
+  setThemeMode,
+}: {
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
+  themeMode?: "light" | "dark";
+  setThemeMode?: (m: "light" | "dark") => void;
+}) {
   return (
     <AppBar position="static" color="transparent" elevation={0} sx={{ mb: 2 }}>
       <Toolbar sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, alignItems: "flex-start", gap: 2 }}>
@@ -39,7 +56,7 @@ function Header({ searchQuery, setSearchQuery }: { searchQuery: string; setSearc
             Admin dashboard
           </Typography>
         </Box>
-        <Box sx={{ width: { xs: "100%", sm: 360 } }}>
+        <Box sx={{ display: "flex", gap: 1, alignItems: "center", width: { xs: "100%", sm: 360 } }}>
           <TextField
             fullWidth
             id="search-pet"
@@ -57,19 +74,28 @@ function Header({ searchQuery, setSearchQuery }: { searchQuery: string; setSearc
               ),
             }}
           />
+          {setThemeMode && (
+            <IconButton onClick={() => setThemeMode(themeMode === "dark" ? "light" : "dark")} aria-label="toggle-theme">
+              {themeMode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
+            </IconButton>
+          )}
         </Box>
       </Toolbar>
     </AppBar>
   );
 }
 
-function ExampleDashboard() {
+function ExampleDashboard({ themeMode, setThemeMode }: ExampleDashboardProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedPet, setSelectedPet] = useState<any>(null);
   const [isAddPetOpen, setIsAddPetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [petsList, setPetsList] = useState<any[]>([]);
   const [explodingIds, setExplodingIds] = useState<Set<string>>(new Set());
+  const [snack, setSnack] = useState<{ open: boolean; message: string; severity?: "success" | "error" }>({
+    open: false,
+    message: "",
+  });
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -82,63 +108,11 @@ function ExampleDashboard() {
   const handleAddPetClick = () => setIsAddPetOpen(true);
   const handleClose = () => setIsAddPetOpen(false);
 
-  const handleAddPetSubmit = async (values: AddPetValues) => {
-    try {
-      const response = await createPet(values);
-      if (response.status === 200) {
-        // After creating, re-fetch the pets from the server so IDs and data
-        // are normalized and the UI reflects the DB state.
-        await loadPets();
-      }
-    } catch (error) {
-      console.error("Failed to create pet:", error);
-    }
-  };
-
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false);
-    setSelectedPet(null);
-    setEditForm({ name: "", breed: "", age: "", url: "" });
-  };
-
-  const handleEditSubmit = async () => {
-    if (!selectedPet) return;
-
-    // Extract the actual ID string from the _id object
-    const petId = extractId(selectedPet._id);
-    console.log("Extracted pet ID:", petId);
-
-    try {
-      const response = await updatePet(petId, {
-        name: editForm.name,
-        breed: editForm.breed,
-        age: editForm.age ? Number(editForm.age) : undefined,
-        url: editForm.url,
-      });
-
-      if (response.status === 200) {
-        // After updating, re-fetch to keep data consistent
-        await loadPets();
-        handleCloseDialog();
-      }
-    } catch (error) {
-      console.error("Failed to update pet:", error);
-    }
-  };
-
-  const handleEditFormChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditForm((prev) => ({
-      ...prev,
-      [field]: e.target.value,
-    }));
-  };
-
   // Helper to extract a string id from different _id representations
   const extractId = (idField: any) => {
     if (!idField) return "";
     if (typeof idField === "string") return idField;
     if (idField.$oid) return idField.$oid;
-    // Fallback to string conversion
     try {
       return String(idField);
     } catch (e) {
@@ -146,36 +120,6 @@ function ExampleDashboard() {
     }
   };
 
-  const handleDelete = async (pet: any) => {
-    const petId = extractId(pet._id);
-    try {
-      const res = await deletePet(petId);
-      // Expecting { deletedCount: 1 } from the server on success
-      if (res.status === 200 && (res.data.deletedCount === 1 || res.data.deletedCount === undefined)) {
-        // Play explosion animation then remove from UI
-        setExplodingIds((prev) => {
-          const s = new Set(prev);
-          s.add(petId);
-          return s;
-        });
-        const ANIM_MS = 1100;
-        setTimeout(() => {
-          setPetsList((prev) => prev.filter((p) => extractId(p._id) !== petId));
-          setExplodingIds((prev) => {
-            const s = new Set(prev);
-            s.delete(petId);
-            return s;
-          });
-        }, ANIM_MS);
-      } else {
-        console.warn("Delete did not remove any document:", res.data);
-      }
-    } catch (err) {
-      console.error("Failed to delete pet:", err);
-    }
-  };
-
-  // Load pets from backend and normalize IDs
   const loadPets = async () => {
     try {
       const data = await getPets();
@@ -186,6 +130,7 @@ function ExampleDashboard() {
       }
     } catch (err) {
       console.error("Failed to load pets:", err);
+      setSnack({ open: true, message: "Failed to load pets", severity: "error" });
     }
   };
 
@@ -193,16 +138,110 @@ function ExampleDashboard() {
     loadPets();
   }, []);
 
+  // Optimistic add: quickly show temp item, then replace with server result (or refetch)
+  const handleAddPetSubmit = async (values: AddPetValues) => {
+    const tempId = `tmp-${Date.now()}`;
+    const tempPet = { _id: tempId, ...values };
+    setPetsList((prev) => [tempPet, ...prev]);
+    try {
+      const response = await createPet(values);
+      if (response.status === 200) {
+        await loadPets();
+        setSnack({ open: true, message: "Pet added", severity: "success" });
+      } else {
+        throw new Error("Create failed");
+      }
+    } catch (err) {
+      // rollback
+      setPetsList((prev) => prev.filter((p) => extractId(p._id) !== tempId));
+      setSnack({ open: true, message: "Failed to add pet", severity: "error" });
+    }
+  };
+
+  // Optimistic delete: animate immediately, rollback on failure
+  const handleDelete = async (pet: any) => {
+    const petId = extractId(pet._id);
+    setExplodingIds((prev) => new Set(prev).add(petId));
+    setTimeout(() => {
+      setPetsList((prev) => prev.filter((p) => extractId(p._id) !== petId));
+    }, 200);
+    try {
+      const res = await deletePet(petId);
+      if (!(res.status === 200 && (res.data.deletedCount === 1 || res.data.deletedCount === undefined))) {
+        throw new Error("Delete did not report success");
+      }
+      setSnack({ open: true, message: "Pet deleted", severity: "success" });
+    } catch (err) {
+      await loadPets();
+      setSnack({ open: true, message: "Failed to delete — restored", severity: "error" });
+    } finally {
+      setTimeout(() => {
+        setExplodingIds((prev) => {
+          const s = new Set(prev);
+          s.delete(petId);
+          return s;
+        });
+      }, 1100);
+    }
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setSelectedPet(null);
+    setEditForm({ name: "", breed: "", age: "", url: "" });
+  };
+
+  const handleEditFormChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditForm((prev) => ({
+      ...prev,
+      [field]: e.target.value,
+    }));
+  };
+
+  const handleEditSubmit = async () => {
+    if (!selectedPet) return;
+    const petId = extractId(selectedPet._id);
+    try {
+      const response = await updatePet(petId, {
+        name: editForm.name,
+        breed: editForm.breed,
+        age: editForm.age ? Number(editForm.age) : undefined,
+        url: editForm.url,
+      });
+
+      if (response.status === 200) {
+        await loadPets();
+        handleCloseDialog();
+        setSnack({ open: true, message: "Pet updated", severity: "success" });
+      }
+    } catch (error) {
+      console.error("Failed to update pet:", error);
+      setSnack({ open: true, message: "Failed to update", severity: "error" });
+    }
+  };
+
   const filteredPets = petsList.filter((pet: any) => (pet.name || "").toLowerCase().includes(searchQuery.toLowerCase()));
 
   const petCards = filteredPets.map((pet: any) => {
     const idStr = extractId(pet._id);
     const isExploding = explodingIds.has(idStr);
+    const imgUrl = pet.url;
+
     return (
       <div key={idStr} className="pet-grid-item">
         <Card className={`pet-card ${isExploding ? "explode-card" : ""}`} sx={{ height: "100%", position: "relative" }}>
-          {pet.url ? (
-            <CardMedia sx={{ height: 220 }} image={pet.url} />
+          {imgUrl ? (
+            <CardMedia
+              component="img"
+              sx={{ height: 220, objectFit: "cover" }}
+              image={imgUrl}
+              alt={pet.name || "pet"}
+              loading="lazy"
+              onError={(e: any) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = "/vite.svg";
+              }}
+            />
           ) : (
             <Box
               sx={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#f3f4f6" }}
@@ -261,13 +300,25 @@ function ExampleDashboard() {
     <>
       <Container maxWidth="lg">
         <Box className="dashboard" sx={{ py: 4 }}>
-          <Header searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+          <Header searchQuery={searchQuery} setSearchQuery={setSearchQuery} themeMode={themeMode} setThemeMode={setThemeMode} />
+
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", marginBottom: 12 }}>
+            <div style={{ flex: 1 }} />
+            <Button variant="contained" onClick={() => setIsAddPetOpen(true)}>
+              Add Pet
+            </Button>
+          </div>
 
           <div className="pet-grid">{petCards}</div>
 
-          <AddPetModal open={isAddPetOpen} onClose={handleClose} onSubmit={handleAddPetSubmit} />
+          <AddPetModal open={isAddPetOpen} onClose={() => setIsAddPetOpen(false)} onSubmit={handleAddPetSubmit} />
 
-          <Fab color="primary" aria-label="add" onClick={handleAddPetClick} sx={{ position: "fixed", right: 24, bottom: 24 }}>
+          <Fab
+            color="primary"
+            aria-label="add"
+            onClick={() => setIsAddPetOpen(true)}
+            sx={{ position: "fixed", right: 24, bottom: 24 }}
+          >
             <AddIcon />
           </Fab>
 
@@ -318,9 +369,8 @@ function ExampleDashboard() {
         </Box>
       </Container>
 
-      {/* Snackbar for notifications */}
-      <Snackbar open={false} /* TODO: wire success state when needed */ onClose={() => {}} autoHideDuration={3000}>
-        <Alert severity="success">Saved</Alert>
+      <Snackbar open={snack.open} autoHideDuration={3000} onClose={() => setSnack({ ...snack, open: false })}>
+        <Alert severity={snack.severity || "success"}>{snack.message}</Alert>
       </Snackbar>
     </>
   );
