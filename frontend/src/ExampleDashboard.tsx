@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./ExampleDashboard.css";
-import pets from "./examplepets.json";
 import Container from "@mui/material/Container";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
@@ -15,7 +14,7 @@ import AddPetModal, { type AddPetValues } from "./AddPetModal";
 import IconButton from "@mui/material/IconButton";
 import SearchIcon from "@mui/icons-material/Search";
 import InputAdornment from "@mui/material/InputAdornment";
-import { createPet, updatePet } from "./ExampleApi";
+import { createPet, updatePet, getPets, deletePet } from "./ExampleApi";
 
 function Header({ searchQuery, setSearchQuery }: { searchQuery: string; setSearchQuery: (q: string) => void }) {
   return (
@@ -49,15 +48,15 @@ function ExampleDashboard() {
   const [selectedPet, setSelectedPet] = useState<any>(null);
   const [isAddPetOpen, setIsAddPetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [petsList, setPetsList] = useState<any[]>(pets);
+  const [petsList, setPetsList] = useState<any[]>([]);
   const [explodingIds, setExplodingIds] = useState<Set<string>>(new Set());
-  
+
   // Edit form state
   const [editForm, setEditForm] = useState({
     name: "",
     breed: "",
     age: "",
-    url: ""
+    url: "",
   });
 
   const handleAddPetClick = () => setIsAddPetOpen(true);
@@ -67,15 +66,9 @@ function ExampleDashboard() {
     try {
       const response = await createPet(values);
       if (response.status === 200) {
-        // Add the new pet to the local state immediately
-        const newPet = {
-          _id: response.data.insertedId,
-          name: values.name,
-          breed: values.breed,
-          age: values.age,
-          url: values.url
-        };
-        setPetsList(prevPets => [...prevPets, newPet]);
+        // After creating, re-fetch the pets from the server so IDs and data
+        // are normalized and the UI reflects the DB state.
+        await loadPets();
       }
     } catch (error) {
       console.error("Failed to create pet:", error);
@@ -90,28 +83,22 @@ function ExampleDashboard() {
 
   const handleEditSubmit = async () => {
     if (!selectedPet) return;
-    
+
     // Extract the actual ID string from the _id object
-    const petId = selectedPet._id.$oid || selectedPet._id;
+    const petId = extractId(selectedPet._id);
     console.log("Extracted pet ID:", petId);
-    
+
     try {
       const response = await updatePet(petId, {
         name: editForm.name,
         breed: editForm.breed,
         age: editForm.age ? Number(editForm.age) : undefined,
-        url: editForm.url
+        url: editForm.url,
       });
-      
+
       if (response.status === 200) {
-        // Update the pet in local state
-        setPetsList(prevPets => 
-          prevPets.map(pet => 
-            pet._id === selectedPet._id 
-              ? { ...pet, ...editForm, age: editForm.age ? Number(editForm.age) : undefined }
-              : pet
-          )
-        );
+        // After updating, re-fetch to keep data consistent
+        await loadPets();
         handleCloseDialog();
       }
     } catch (error) {
@@ -120,36 +107,79 @@ function ExampleDashboard() {
   };
 
   const handleEditFormChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditForm(prev => ({
+    setEditForm((prev) => ({
       ...prev,
-      [field]: e.target.value
+      [field]: e.target.value,
     }));
   };
 
-  const handleDelete = (petId: string) => {
-    setExplodingIds((prev) => {
-      const s = new Set(prev);
-      s.add(petId);
-      return s;
-    });
-
-    const ANIM_MS = 1100;
-    setTimeout(() => {
-      setPetsList((prev) => prev.filter((p) => p._id !== petId));
-      setExplodingIds((prev) => {
-        const s = new Set(prev);
-        s.delete(petId);
-        return s;
-      });
-    }, ANIM_MS);
+  // Helper to extract a string id from different _id representations
+  const extractId = (idField: any) => {
+    if (!idField) return "";
+    if (typeof idField === "string") return idField;
+    if (idField.$oid) return idField.$oid;
+    // Fallback to string conversion
+    try {
+      return String(idField);
+    } catch (e) {
+      return JSON.stringify(idField);
+    }
   };
 
-  const filteredPets = petsList.filter((pet: any) => pet.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const handleDelete = async (pet: any) => {
+    const petId = extractId(pet._id);
+    try {
+      const res = await deletePet(petId);
+      // Expecting { deletedCount: 1 } from the server on success
+      if (res.status === 200 && (res.data.deletedCount === 1 || res.data.deletedCount === undefined)) {
+        // Play explosion animation then remove from UI
+        setExplodingIds((prev) => {
+          const s = new Set(prev);
+          s.add(petId);
+          return s;
+        });
+        const ANIM_MS = 1100;
+        setTimeout(() => {
+          setPetsList((prev) => prev.filter((p) => extractId(p._id) !== petId));
+          setExplodingIds((prev) => {
+            const s = new Set(prev);
+            s.delete(petId);
+            return s;
+          });
+        }, ANIM_MS);
+      } else {
+        console.warn("Delete did not remove any document:", res.data);
+      }
+    } catch (err) {
+      console.error("Failed to delete pet:", err);
+    }
+  };
+
+  // Load pets from backend and normalize IDs
+  const loadPets = async () => {
+    try {
+      const data = await getPets();
+      if (Array.isArray(data)) {
+        setPetsList(data.map((p: any) => ({ ...p })));
+      } else {
+        console.warn("getPets returned unexpected data:", data);
+      }
+    } catch (err) {
+      console.error("Failed to load pets:", err);
+    }
+  };
+
+  useEffect(() => {
+    loadPets();
+  }, []);
+
+  const filteredPets = petsList.filter((pet: any) => (pet.name || "").toLowerCase().includes(searchQuery.toLowerCase()));
 
   const petCards = filteredPets.map((pet: any) => {
-    const isExploding = explodingIds.has(pet._id);
+    const idStr = extractId(pet._id);
+    const isExploding = explodingIds.has(idStr);
     return (
-      <div key={pet._id} className="pet-grid-item">
+      <div key={idStr} className="pet-grid-item">
         <Card className={`pet-card ${isExploding ? "explode-card" : ""}`} sx={{ height: "100%", position: "relative" }}>
           {pet.url ? (
             <CardMedia sx={{ height: 220 }} image={pet.url} />
@@ -179,7 +209,7 @@ function ExampleDashboard() {
                   name: pet.name || "",
                   breed: pet.breed || "",
                   age: pet.age ? pet.age.toString() : "",
-                  url: pet.url || ""
+                  url: pet.url || "",
                 });
                 setIsDialogOpen(true);
               }}
@@ -187,7 +217,7 @@ function ExampleDashboard() {
             >
               Modify
             </Button>
-            <Button size="small" color="error" onClick={() => handleDelete(pet._id)}>
+            <Button size="small" color="error" onClick={() => handleDelete(pet)}>
               Delete
             </Button>
           </CardActions>
@@ -224,32 +254,32 @@ function ExampleDashboard() {
               <Typography variant="h5" gutterBottom>
                 Edit Pet
               </Typography>
-              <TextField 
-                margin="normal" 
-                fullWidth 
-                label="Pet Name" 
+              <TextField
+                margin="normal"
+                fullWidth
+                label="Pet Name"
                 value={editForm.name}
                 onChange={handleEditFormChange("name")}
               />
-              <TextField 
-                margin="normal" 
-                fullWidth 
-                label="Breed" 
+              <TextField
+                margin="normal"
+                fullWidth
+                label="Breed"
                 value={editForm.breed}
                 onChange={handleEditFormChange("breed")}
               />
-              <TextField 
-                margin="normal" 
-                fullWidth 
-                label="Age" 
+              <TextField
+                margin="normal"
+                fullWidth
+                label="Age"
                 value={editForm.age}
                 onChange={handleEditFormChange("age")}
                 type="number"
               />
-              <TextField 
-                margin="normal" 
-                fullWidth 
-                label="Picture URL" 
+              <TextField
+                margin="normal"
+                fullWidth
+                label="Picture URL"
                 value={editForm.url}
                 onChange={handleEditFormChange("url")}
               />
